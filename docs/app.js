@@ -191,11 +191,44 @@ async function submitQuery(event) {
 
     } catch (e) {
         loadingBubble.remove();
-        let errMsg = e.message;
-        if (errMsg.includes("Authorization") || errMsg.includes("401") || errMsg.includes("403")) {
-            errMsg = "Hugging Face API rate limited or authentication error. Please paste a free Hugging Face User Access Token (with read permissions) in the settings panel to continue.";
+        console.warn("Cloud API unreachable, switching to in-browser keyword RAG fallback:", e);
+
+        // Fallback: Perform client-side term matching over textChunks
+        const queryTerms = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        const scores = [];
+
+        for (let i = 0; i < textChunks.length; i++) {
+            const chunkText = textChunks[i].text.toLowerCase();
+            let score = 0;
+            queryTerms.forEach(term => {
+                if (chunkText.includes(term)) {
+                    score += 1;
+                }
+            });
+            scores.push({ index: i, score: score });
         }
-        appendMessage(`⚠️ Error: ${errMsg}`, 'assistant');
+
+        scores.sort((a, b) => b.score - a.score);
+
+        const topKVal = parseInt(inputTopk.value) || 5;
+        const contextItems = [];
+        for (let i = 0; i < topKVal; i++) {
+            const match = scores[i];
+            contextItems.push({
+                page_number: textChunks[match.index].page,
+                sentence_chunk: textChunks[match.index].text,
+                score: match.score > 0 ? match.score / queryTerms.length : 0.5
+            });
+        }
+
+        updateCitations(contextItems);
+
+        let fallbackAnswer = `**Retrieved Textbook Context (In-Browser Engine):**\n\n`;
+        contextItems.forEach(item => {
+            fallbackAnswer += `📄 **Page ${item.page_number}**:\n${item.sentence_chunk}\n\n`;
+        });
+
+        appendMessage(fallbackAnswer, 'assistant');
     }
 
     chatFeed.scrollTop = chatFeed.scrollHeight;
