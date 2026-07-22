@@ -5,7 +5,15 @@
 A client-side Retrieval-Augmented Generation (RAG) assistant that lets you search and query a 1200-page Human Nutrition textbook directly in your browser.
 
 ## 🚀 Live Demo
-🌐 **[https://<your-username>.github.io/nutrichat/](https://<your-username>.github.io/nutrichat/)**
+🌐 **[https://manu-mitt.github.io/NutriRAG-Assistant/](https://manu-mitt.github.io/NutriRAG-Assistant/)**
+
+---
+
+## 💻 Local Host Execution
+If you want to run the pipeline locally (bypassing online API restrictions or regional DNS blocks):
+1. Start the Python server: `python app_server.py`
+2. Access the Web UI dashboard on your computer: **[http://localhost:8000](http://localhost:8000)**
+3. Access on your mobile device (connected to same Wi-Fi): **[http://10.50.148.236:8000](http://10.50.148.236:8000)**
 
 ---
 

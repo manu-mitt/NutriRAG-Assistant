@@ -1,5 +1,9 @@
 # Simple Local RAG 
 
+**Author:** Manu M
+
+🚀 **Live Serverless Demo:** [https://manu-mitt.github.io/NutriRAG-Assistant/](https://manu-mitt.github.io/NutriRAG-Assistant/)
+
 Local RAG pipeline we're going to build:
 
 !["This is a flowchart describing a simple local retrieval-augmented generation (RAG) workflow for document processing and embedding creation, followed by search and answer functionality. The process begins with a collection of documents, such as PDFs or a 1200-page nutrition textbook, which are preprocessed into smaller chunks, for example, groups of 10 sentences each. These chunks are used as context for the Large Language Model (LLM). A cool person (potentially the user) asks a query such as "What are the macronutrients? And what do they do?" This query is then transformed by an embedding model into a numerical representation using sentence transformers or other options from Hugging Face, which are stored in a torch.tensor format for efficiency, especially with large numbers of embeddings (around 100k+). For extremely large datasets, a vector database/index may be used. The numerical query and relevant document passages are processed on a local GPU, specifically an RTX 4090. The LLM generates output based on the context related to the query, which can be interacted with through an optional chat web app interface. All of this processing happens on a local GPU. The flowchart includes icons for documents, processing steps, and hardware, with arrows indicating the flow from document collection to user interaction with the generated text and resources."](images/simple-local-rag-workflow-flowchart.png)
@@ -173,10 +177,68 @@ Performance wise, LLM APIs may still perform better than an open-source model ru
 | **LLM context window** | The number of tokens a LLM can accept as input. For example, as of March 2024, GPT-4 has a default context window of 32k tokens<br> (about 96 pages of text) but can go up to 128k if needed. A recent open-source LLM from Google, Gemma (March 2024) has a context<br> window of 8,192 tokens (about 24 pages of text). A higher context window means an LLM can accept more relevant information<br> to assist with a query. For example, in a RAG pipeline, if a model has a larger context window, it can accept more reference items<br> from the retrieval system to aid with its generation. |
 | **Prompt** | A common term for describing the input to a generative LLM. The idea of "[prompt engineering](https://en.wikipedia.org/wiki/Prompt_engineering)" is to structure a text-based<br> (or potentially image-based as well) input to a generative LLM in a specific way so that the generated output is ideal. This technique is<br> possible because of a LLMs capacity for in-context learning, as in, it is able to use its representation of language to breakdown <br>the prompt and recognize what a suitable output may be (note: the output of LLMs is probable, so terms like "may output" are used). | 
 
-# TK - Extensions 
+## Extensions
 
-Coming soon.
+Three interactive interfaces have been added on top of the core RAG pipeline:
 
+### 1. Interactive Terminal CLI
 
+Chat with the RAG pipeline directly in your terminal. The models load once and stay resident in memory for fast follow-up queries.
 
+```bash
+python interactive_cli.py
+```
 
+**Inline commands:**
+| Command | Description |
+| ------- | ----------- |
+| `/temp <value>` | Set generation temperature (e.g. `/temp 0.3`) |
+| `/topk <value>` | Set number of retrieved context chunks (e.g. `/topk 5`) |
+| `/exit` or `/quit` | Exit the session |
+
+### 2. Local API Server
+
+A zero-dependency HTTP server (built on Python's `http.server`) that exposes the RAG pipeline as a JSON API.
+
+```bash
+python app_server.py
+```
+
+The server starts on **http://localhost:8000** (or **http://10.50.148.236:8000** on your local network/mobile) and provides:
+
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| `/` | GET | Serves the Web UI dashboard |
+| `/api/query` | POST | Accepts a JSON query and returns the answer with citations |
+
+**Example API request:**
+```bash
+curl -X POST http://localhost:8000/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are the fat-soluble vitamins?", "temperature": 0.7, "top_k": 3}'
+```
+
+**Example response:**
+```json
+{
+  "answer": "The fat-soluble vitamins include Vitamin A, Vitamin D, Vitamin E, and Vitamin K.",
+  "context_items": [
+    {"page_number": 526, "sentence_chunk": "...", "score": 0.746},
+    {"page_number": 517, "sentence_chunk": "...", "score": 0.665}
+  ]
+}
+```
+
+### 3. Web UI Dashboard
+
+A sleek, dark-mode glassmorphic frontend served automatically by the API server at **http://localhost:8000**.
+
+**Features:**
+- Modern design with Outfit & Plus Jakarta Sans typography
+- Real-time **temperature** and **top-k** parameter sliders
+- Query suggestion chips for quick prompts
+- Citation cards with page numbers and similarity scores
+- Click-to-expand modal for full source text
+- Loading animations during CPU inference
+
+To use it, simply start the API server and open **http://localhost:8000** in your browser.
