@@ -1,4 +1,4 @@
-# Simple Local RAG Tutorial
+# Simple Local RAG 
 
 Local RAG pipeline we're going to build:
 
