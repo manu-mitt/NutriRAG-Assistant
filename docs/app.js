@@ -197,16 +197,39 @@ async function submitQuery(event) {
         loadingBubble.remove();
         console.warn("Cloud API unreachable, switching to in-browser keyword RAG fallback:", e);
 
-        // Fallback: Perform client-side term matching over textChunks
-        const queryTerms = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-        const scores = [];
+        // Fallback: Perform client-side TF-IDF keyword RAG search
+        const stopWords = new Set(['what', 'are', 'the', 'and', 'for', 'with', 'you', 'can', 'your', 'about', 'how', 'this', 'that', 'from', 'but', 'not', 'they', 'them', 'their', 'she', 'him', 'his', 'her', 'who', 'whom', 'which', 'why', 'when', 'where', 'has', 'have', 'had', 'was', 'were', 'been', 'will', 'would', 'should', 'could', 'out', 'into', 'over', 'under', 'these', 'those', 'some', 'any', 'each', 'every', 'other', 'another', 'what']);
+        
+        let queryTerms = query.toLowerCase().split(/\s+/)
+            .map(w => w.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, ""))
+            .filter(w => w.length > 2 && !stopWords.has(w));
+            
+        if (queryTerms.length === 0) {
+            queryTerms = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        }
 
+        // Calculate Document Frequency (DF) for each query term dynamically
+        const dfMap = {};
+        queryTerms.forEach(term => {
+            let df = 0;
+            for (let i = 0; i < textChunks.length; i++) {
+                if (textChunks[i].text.toLowerCase().includes(term)) {
+                    df++;
+                }
+            }
+            dfMap[term] = df;
+        });
+
+        // Compute TF-IDF scores
+        const scores = [];
         for (let i = 0; i < textChunks.length; i++) {
             const chunkText = textChunks[i].text.toLowerCase();
             let score = 0;
             queryTerms.forEach(term => {
-                if (chunkText.includes(term)) {
-                    score += 1;
+                const termCount = (chunkText.split(term).length - 1);
+                if (termCount > 0) {
+                    const idf = Math.log(textChunks.length / (1 + dfMap[term]));
+                    score += termCount * idf;
                 }
             });
             scores.push({ index: i, score: score });
@@ -221,7 +244,7 @@ async function submitQuery(event) {
             contextItems.push({
                 page_number: textChunks[match.index].page,
                 sentence_chunk: textChunks[match.index].text,
-                score: match.score > 0 ? match.score / queryTerms.length : 0.5
+                score: match.score > 0 ? match.score : 0.5
             });
         }
 
