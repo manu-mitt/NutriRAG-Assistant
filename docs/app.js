@@ -127,7 +127,11 @@ async function submitQuery(event) {
             throw new Error(`Embedding API failed: ${err.error || embedRes.statusText}`);
         }
 
-        const queryEmbedding = await embedRes.json();
+        let queryEmbedding = await embedRes.json();
+        // Handle nested arrays from HF API (returns [[...]] for feature extraction)
+        while (Array.isArray(queryEmbedding) && queryEmbedding.length > 0 && Array.isArray(queryEmbedding[0])) {
+            queryEmbedding = queryEmbedding[0];
+        }
 
         // 2. Perform Cosine Similarity Search locally in JavaScript
         const scores = [];
