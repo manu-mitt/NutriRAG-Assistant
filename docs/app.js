@@ -250,7 +250,43 @@ async function submitQuery(event) {
 
         updateCitations(contextItems);
 
-        let fallbackAnswer = `**Retrieved Textbook Context (In-Browser Engine):**\n\n`;
+        // Extract matching sentences for a clean synthesized summary
+        const sentences = [];
+        contextItems.forEach(item => {
+            const matches = item.sentence_chunk.match(/[^.!?]+[.!?]+/g) || [item.sentence_chunk];
+            matches.forEach(s => {
+                sentences.push({ text: s.trim(), page: item.page_number });
+            });
+        });
+
+        // Score sentences based on query term frequency
+        const scoredSentences = sentences.map(s => {
+            let score = 0;
+            const lowerText = s.text.toLowerCase();
+            queryTerms.forEach(term => {
+                if (lowerText.includes(term)) {
+                    score += 1;
+                }
+            });
+            return { sentence: s, score: score };
+        });
+
+        // Sort by score descending
+        scoredSentences.sort((a, b) => b.score - a.score);
+        
+        // Take top sentences that match at least 2 search keywords
+        const bestSentences = scoredSentences.filter(s => s.score > 1).slice(0, 3);
+        
+        let synthesizedAnswer = "";
+        if (bestSentences.length > 0) {
+            synthesizedAnswer = bestSentences.map(s => s.sentence.text).join(" ");
+        } else {
+            synthesizedAnswer = scoredSentences[0] && scoredSentences[0].score > 0 
+                ? scoredSentences[0].sentence.text
+                : "Refer to the textbook snippets below for details.";
+        }
+
+        let fallbackAnswer = `${synthesizedAnswer}\n\n---\n**📚 Textbook Context (In-Browser Engine):**\n\n`;
         contextItems.forEach(item => {
             fallbackAnswer += `📄 **Page ${item.page_number}**:\n${item.sentence_chunk}\n\n`;
         });
